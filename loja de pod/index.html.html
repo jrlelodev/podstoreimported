@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pod Store</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+body{
+  background: linear-gradient(-45deg,#0e0e0e,#111,#1a1a1a,#0e0e0e);
+  background-size:400% 400%;
+  animation: gradientBG 20s ease infinite;
+  color:#fff;
+}
+@keyframes gradientBG{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+header{padding:60px 20px;text-align:center;animation:fadeIn 1s ease forwards;opacity:0}
+header h1{color:#00ffcc;margin-bottom:10px}
+header p{color:#ccc}
+section{padding:50px 20px;max-width:1100px;margin:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+.card{background:#1a1a1a;padding:20px;border-radius:15px;text-align:center;transition: transform 0.3s ease}
+.card:hover{transform:translateY(-5px)}
+.btn{background:#00ffcc;color:#000;padding:12px 25px;border-radius:25px;border:none;cursor:pointer;font-weight:bold;margin-top:10px;transition: all 0.3s ease}
+.btn:hover{background:#00eeaa;transform:scale(1.05)}
+.btn.secondary{background:#1a1a1a;color:#fff;border:1px solid #00ffcc}
+.cart{position:fixed;top:20px;right:20px;background:#00ffcc;color:#000;padding:10px 20px;border-radius:20px;cursor:pointer;font-weight:bold;z-index:100}
+#cartModal{display:none;position:fixed;inset:0;background:#000c;justify-content:center;align-items:center;z-index:101}
+.modal{background:#1a1a1a;padding:25px;border-radius:20px;width:90%;max-width:450px;animation:fadeIn 0.5s ease forwards;opacity:0}
+.qty{display:flex;justify-content:space-between;align-items:center;margin:8px 0}
+.qty button{background:#00ffcc;border:none;padding:5px 10px;border-radius:10px;cursor:pointer;font-weight:bold;transition:all 0.3s ease}
+.qty button:hover{background:#00eeaa}
+input{width:100%;padding:10px;margin:8px 0;border-radius:10px;border:none}
+footer{text-align:center;padding:20px;background:#000;color:#888;margin-top:20px}
+@keyframes fadeIn{to{opacity:1}}
+</style>
+</head>
+<body>
+
+<div class="cart" onclick="openCart()">🛒 Carrinho (<span id="count">0</span>)</div>
+
+<header>
+<h1>🔥 Pod Store</h1>
+<p>Pods premium com entrega rápida</p>
+</header>
+
+<section>
+<h2 style="color:#00ffcc;margin-bottom:20px">💨 Produtos</h2>
+<div class="grid" id="products"></div>
+</section>
+
+<div id="cartModal">
+<div class="modal">
+<h2>🧾 Seu pedido</h2>
+<div id="items"></div>
+<p>Frete: R$ <span id="frete"></span></p>
+<p><strong>Total: R$ <span id="total"></span></strong></p>
+<h3>💳 Pix</h3>
+<p>Chave: <strong id="pix"></strong></p>
+<input type="text" id="name" placeholder="Seu nome">
+<input type="text" id="address" placeholder="Endereço">
+<button class="btn" onclick="checkout()">Finalizar no WhatsApp</button>
+<button class="btn secondary" onclick="closeCart()">Fechar</button>
+</div>
+</div>
+
+<footer>
+© 2026 Pod Store — Venda proibida para menores de 18 anos
+</footer>
+
+<script>
+const WHATSAPP="5513955431011"; // Número atualizado
+const PIX_KEY="SEU_PIX_AQUI";
+const FRETE_FIXO=15;
+const ADMIN_PASSWORD="1234";
+
+let products=JSON.parse(localStorage.getItem("products"))||[
+  {name:"Ice Mint",price:99.9},
+  {name:"Strawberry Watermelon",price:99.9},
+  {name:"Mango Peach",price:109.9},
+  {name:"Grape Ice",price:109.9}
+];
+
+let cart=[];
+
+document.getElementById("pix").innerText=PIX_KEY;
+document.getElementById("frete").innerText=FRETE_FIXO.toFixed(2);
+
+function renderProducts(){
+  const div=document.getElementById("products");
+  div.innerHTML="";
+  products.forEach(p=>{
+    div.innerHTML+=`<div class="card"><h3>${p.name}</h3><p>R$ ${p.price.toFixed(2)}</p><button class="btn" onclick="add('${p.name}')">Adicionar</button></div>`;
+  });
+}
+renderProducts();
+
+function add(name){
+  const prod=products.find(p=>p.name===name);
+  const item=cart.find(i=>i.name===name);
+  item?item.qty++:cart.push({name,price:prod.price,qty:1});
+  updateCount();
+}
+function updateCount(){document.getElementById("count").innerText=cart.reduce((s,i)=>s+i.qty,0);}
+function openCart(){document.getElementById("cartModal").style.display="flex";renderCart();}
+function closeCart(){document.getElementById("cartModal").style.display="none";}
+
+function renderCart(){
+  let html="",total=FRETE_FIXO;
+  cart.forEach(i=>{
+    total+=i.price*i.qty;
+    html+=`<div class="qty"><span>${i.qty}x ${i.name}</span><div><button onclick="chg('${i.name}',-1)">−</button><button onclick="chg('${i.name}',1)">+</button></div></div>`;
+  });
+  document.getElementById("items").innerHTML=html;
+  document.getElementById("total").innerText=total.toFixed(2);
+}
+
+function chg(name,n){
+  const i=cart.find(x=>x.name===name);
+  i.qty+=n;
+  if(i.qty<=0)cart=cart.filter(x=>x.name!==name);
+  updateCount();renderCart();
+}
+
+function checkout(){
+  const nameInput=document.getElementById("name").value;
+  const addressInput=document.getElementById("address").value;
+  let msg=`Pedido:%0A`;
+  let total=FRETE_FIXO;
+  cart.forEach(i=>{
+    total+=i.price*i.qty;
+    msg+=`${i.qty}x ${i.name} (R$ ${(i.price*i.qty).toFixed(2)})%0A`;
+  });
+  msg+=`Frete: R$ ${FRETE_FIXO}%0ATotal: R$ ${total.toFixed(2)}%0A`;
+  msg+=`Nome: ${nameInput}%0AEndereço: ${addressInput}%0APix: ${PIX_KEY}`;
+  window.open(`https://wa.me/${WHATSAPP}?text=${msg}`);
+}
+
+document.addEventListener("keydown",e=>{
+  if(e.ctrlKey&&e.shiftKey&&e.key==="A"){
+    const pass=prompt("Senha admin:");
+    if(pass===ADMIN_PASSWORD){
+      products.forEach(p=>{
+        const n=prompt(`Novo preço para ${p.name}`,p.price);
+        if(n)p.price=parseFloat(n);
+      });
+      localStorage.setItem("products",JSON.stringify(products));
+      renderProducts();
+      alert("Preços atualizados");
+    }
+  }
+});
+</script>
+</body>
+</html>
